@@ -21,9 +21,6 @@
             let markerRoot1, markerRoot2;
             let mesh_cube;
 
-            initialize();
-            animate();
-
             const initialize = () => {
                 scene = new THREE.scene();
                 let ambientLight = new THREE.AmbientLight( 0xcccccc, 0.5 );
@@ -158,6 +155,9 @@
                 update();
                 render();
             }
+
+            initialize();
+            animate();
         </script>
     </body>
 </html>
