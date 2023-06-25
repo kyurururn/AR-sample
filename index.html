@@ -13,150 +13,152 @@
         <script src="threex/threex-arsmoothedcontrols.js"></script>
     </head>
 
-    <body style='margin : 0px; overflow: hidden; font-family: Monospace;'> </body>
+    <body style='margin : 0px; overflow: hidden; font-family: Monospace;'>
 
-    <script>
-        let scene, camera, renderer, clock, deltaTime, totalTime;
-        let arToolkitSource, arToolkitContext, smoothedControls;
-        let markerRoot1, markerRoot2;
-        let mesh_cube;
+        <script>
+            let scene, camera, renderer, clock, deltaTime, totalTime;
+            let arToolkitSource, arToolkitContext, smoothedControls;
+            let markerRoot1, markerRoot2;
+            let mesh_cube;
 
-        initialize();
-        animate();
+            const initialize = () => {
+                scene = new THREE.scene();
+                let ambientLight = new THREE.AmbientLight( 0xcccccc, 0.5 );
+                scene.add( ambientLight );
+                            
+                camera = new THREE.Camera();
+                scene.add(camera);
 
-        const initialize = () => {
-            scene = new THREE.scene();
-            let ambientLight = new THREE.AmbientLight( 0xcccccc, 0.5 );
-            scene.add( ambientLight );
-                        
-            camera = new THREE.Camera();
-            scene.add(camera);
+                renderer = new THREE.WebGLRenderer({
+                    antialias : true,
+                    alpha: true
+                });
+                renderer.setClearColor(new THREE.Color('lightgrey'), 0)
+                renderer.setSize( 640, 480 );
+                renderer.domElement.style.position = 'absolute'
+                renderer.domElement.style.top = '0px'
+                renderer.domElement.style.left = '0px'
+                document.body.appendChild( renderer.domElement );
 
-            renderer = new THREE.WebGLRenderer({
-                antialias : true,
-                alpha: true
-            });
-            renderer.setClearColor(new THREE.Color('lightgrey'), 0)
-            renderer.setSize( 640, 480 );
-            renderer.domElement.style.position = 'absolute'
-            renderer.domElement.style.top = '0px'
-            renderer.domElement.style.left = '0px'
-            document.body.appendChild( renderer.domElement );
+                clock = new THREE.Clock();
+                deltaTime = 0;
+                totalTime = 0;
 
-            clock = new THREE.Clock();
-            deltaTime = 0;
-            totalTime = 0;
+                arToolkitSource = new THREEx.ArToolkitSource({
+                    sourceType : 'webcam',
+                });
 
-            arToolkitSource = new THREEx.ArToolkitSource({
-                sourceType : 'webcam',
-            });
-
-            function onResize()
-            {
-                arToolkitSource.onResize()	
-                arToolkitSource.copySizeTo(renderer.domElement)	
-                if ( arToolkitContext.arController !== null )
+                function onResize()
                 {
-                    arToolkitSource.copySizeTo(arToolkitContext.arController.canvas)	
-                }	
+                    arToolkitSource.onResize()	
+                    arToolkitSource.copySizeTo(renderer.domElement)	
+                    if ( arToolkitContext.arController !== null )
+                    {
+                        arToolkitSource.copySizeTo(arToolkitContext.arController.canvas)	
+                    }	
+                }
+
+                arToolkitSource.init(function onReady(){
+                    onResize()
+                });
+
+                window.addEventListener('resize', function(){
+                    onResize()
+                });
+
+                arToolkitContext = new THREEx.ArToolkitContext({
+                    cameraParametersUrl: 'data/camera_para.dat',
+                    detectionMode: 'mono'
+                });
+
+                arToolkitContext.init( function onCompleted(){
+                    camera.projectionMatrix.copy( arToolkitContext.getProjectionMatrix() );
+                });
+
+                markerRoot1 = new THREE.Group();
+                scene.add(markerRoot1);
+                
+                let markerControls1 = new THREEx.ArMarkerControls(arToolkitContext, markerRoot1, {
+                    type : 'pattern',
+                    patternUrl : "data/hiro.patt",
+                })
+
+                let smoothedRoot = new THREE.Group();
+                scene.add(smoothedRoot);
+                smoothedControls = new THREEx.ArSmoothedControls(smoothedRoot, {
+                    lerpPosition: 0.8,
+                    lerpQuaternion: 0.8,
+                    lerpScale: 1,
+                });
+
+
+                //setting materials
+
+                let geometry_cube	= new THREE.CubeGeometry(1,1,1);
+                let material_cube	= new THREE.MeshBasicMaterial({
+                    color:0xE76435,
+                    transparent : true,
+                    opacity: 0.5,
+                    side: THREE.DoubleSide
+                });
+
+                mesh_cube = new THREE.Mesh( geometry_cube, material_cube );
+                mesh_cube.position.y = 0.5;
+                smoothedRoot.add( mesh_cube );
+
+
+
+                let geometry_hole = new THREE.CubeGeometry(1.5,1.5,1.5);
+                
+                let loader = new THREE.TextureLoader();
+                let texture = loader.load( 'images/tiles.jpg' );
+                let material_hole	= new THREE.MeshLambertMaterial({
+                    transparent : true,
+                    map: texture,
+                    side: THREE.BackSide
+                }); 
+                
+                mesh_hole = new THREE.Mesh( geometry_hole, material_hole );
+                mesh_hole.position.y = -0.75;
+                
+                markerRoot1.add( mesh_hole );
+                
+                // the invisibility cloak (box with a hole)
+                let geometry_hole2 = new THREE.BoxGeometry(2,2,2);
+                geometry_hole2.faces.splice(4, 2); // make hole by removing top two triangles
+                
+                let material_hole2 = new THREE.MeshBasicMaterial({
+                    colorWrite: false
+                });
+                
+                let mesh0 = new THREE.Mesh( geometry_hole2, material_hole2 );
+                mesh0.scale.set(1,1,1).multiplyScalar(1.01);
+                mesh0.position.y = -1;
+                smoothedRoot.add(mesh0);	
             }
 
-            arToolkitSource.init(function onReady(){
-                onResize()
-            });
-
-            window.addEventListener('resize', function(){
-                onResize()
-            });
-
-            arToolkitContext = new THREEx.ArToolkitContext({
-                cameraParametersUrl: 'data/camera_para.dat',
-                detectionMode: 'mono'
-            });
-
-            arToolkitContext.init( function onCompleted(){
-                camera.projectionMatrix.copy( arToolkitContext.getProjectionMatrix() );
-            });
-
-            markerRoot1 = new THREE.Group();
-            scene.add(markerRoot1);
-            
-            let markerControls1 = new THREEx.ArMarkerControls(arToolkitContext, markerRoot1, {
-                type : 'pattern',
-                patternUrl : "data/hiro.patt",
-            })
-
-            let smoothedRoot = new THREE.Group();
-            scene.add(smoothedRoot);
-            smoothedControls = new THREEx.ArSmoothedControls(smoothedRoot, {
-                lerpPosition: 0.8,
-                lerpQuaternion: 0.8,
-                lerpScale: 1,
-            });
-
-
-            //setting materials
-
-            let geometry_cube	= new THREE.CubeGeometry(1,1,1);
-            let material_cube	= new THREE.MeshBasicMaterial({
-                color:0xE76435,
-                transparent : true,
-                opacity: 0.5,
-                side: THREE.DoubleSide
-            });
-
-            mesh_cube = new THREE.Mesh( geometry_cube, material_cube );
-            mesh_cube.position.y = 0.5;
-            smoothedRoot.add( mesh_cube );
-
-
-
-            let geometry_hole = new THREE.CubeGeometry(1.5,1.5,1.5);
-            
-            let loader = new THREE.TextureLoader();
-            let texture = loader.load( 'images/tiles.jpg' );
-            let material_hole	= new THREE.MeshLambertMaterial({
-                transparent : true,
-                map: texture,
-                side: THREE.BackSide
-            }); 
-            
-            mesh_hole = new THREE.Mesh( geometry_hole, material_hole );
-            mesh_hole.position.y = -0.75;
-            
-            markerRoot1.add( mesh_hole );
-            
-            // the invisibility cloak (box with a hole)
-            let geometry_hole2 = new THREE.BoxGeometry(2,2,2);
-            geometry_hole2.faces.splice(4, 2); // make hole by removing top two triangles
-            
-            let material_hole2 = new THREE.MeshBasicMaterial({
-                colorWrite: false
-            });
-            
-            let mesh0 = new THREE.Mesh( geometry_hole2, material_hole2 );
-            mesh0.scale.set(1,1,1).multiplyScalar(1.01);
-            mesh0.position.y = -1;
-            smoothedRoot.add(mesh0);	
-        }
-
-        const update = () => {
-            if ( arToolkitSource.ready !== false ){
-                arToolkitContext.update( arToolkitSource.domElement );
+            const update = () => {
+                if ( arToolkitSource.ready !== false ){
+                    arToolkitContext.update( arToolkitSource.domElement );
+                }
+                smoothedControls.update(markerRoot1);
             }
-            smoothedControls.update(markerRoot1);
-        }
 
-        const render = () => {
-	        renderer.render( scene, camera );
-        }
+            const render = () => {
+                renderer.render( scene, camera );
+            }
 
-        const animate = () => {
-            requestAnimationFrame(animate);
-            deltaTime = clock.getDelta();
-            totalTime += deltaTime;
-            update();
-            render();
-        }
-    </script>
+            const animate = () => {
+                requestAnimationFrame(animate);
+                deltaTime = clock.getDelta();
+                totalTime += deltaTime;
+                update();
+                render();
+            }
+
+
+            initialize();
+            animate();
+        </script>
+    </body>
 </html>
